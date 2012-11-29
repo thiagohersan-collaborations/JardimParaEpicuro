@@ -9,7 +9,6 @@ import processing.serial.*;
 
 int HAIRLENGTH = 18;
 int NUMHAIR = 600;
-
 int NUMBALLS = 10;
 float TEMPVAR = 0.2;
 
@@ -26,25 +25,15 @@ PImage img;
 
 int htimer;
 
-PrintWriter output;
-
+BufferedReader webReader;
 Serial myPort;
+DataReader dReader;
+String dataStr;
+int serialTimer;
 
-String serialStr;
-
-int sonar_1, sonar_2, temperature, humidity, light, temperature0, humidity0, light0; 
+float temperature, humidity, light, temperature0, humidity0, light0; 
 
 void setup() {
-
-  println (Serial.list());
-
-  if (Serial.list().length > 0) {
-    myPort = new Serial(this, Serial.list()[0], 19200);
-    print ("found "+Serial.list().length+" serial ports");
-  }
-  else
-    myPort = null;
-
   //size(800, 600, OPENGL);
   size(screen.width, screen.height, OPENGL);
   smooth();
@@ -52,16 +41,41 @@ void setup() {
 
   frameRate(24);
 
+  println (Serial.list());
+  if (Serial.list().length > 0) {
+    myPort = new Serial(this, Serial.list()[0], 9600);
+    System.out.println("found "+Serial.list().length+" serial ports");
+    myPort.bufferUntil('\n');
+    myPort.clear();
+  }
+  else {
+    myPort = null;
+  }
+
+
+  // data reader
+  // pass a url to read from web
+  // or serial object to read from serial port
+
+  // ****
+  // **** mudar aqui se for necessario usar a entrada serial.
+  // ****
+  dReader = new DataReader("http://ecolab.plataformacero.cc/datos/datos.php?sensor_id=6");
+  //dReader = new DataReader(myPort);
+
   Hairs = new ArrayList();
   U = new ArrayList();
 
   //img = loadImage("xadrez.bmp");
   //img = loadImage("desenho1.bmp");
   img = loadImage("desenho6.bmp");
+  img.resize(width,height);
 
   img.loadPixels();
 
   htimer = millis();
+
+  serialTimer = millis();
 
   PVX = new float[height][width];
   PVY = new float[height][width];
@@ -71,7 +85,7 @@ void setup() {
   float maxX=0;
   float maxY=0;
 
-  sonar_1 = sonar_2 = temperature = humidity = light = -10;
+  temperature = humidity = light = -10;
   temperature0 = humidity0 = light0 = -10;
 
   for (int j=1; j<(img.height-1); j++) {
@@ -131,8 +145,6 @@ void setup() {
 
       PVX[j][i] /= maxX;
       PVY[j][i] /= maxY;
-
-      //output.println(i+","+j+"="+nx+","+ny);
     }
   }
 
@@ -163,38 +175,40 @@ void setup() {
 void draw() {
   background(255, 255, 255);
 
-  if (myPort != null) {
+  // read from serial only once per minute...
+  // this only detects once a minute has passed, 
+  // clears the buffer, and sets up readFromSerial
+  // in order to catch the next serial bundle
+  if ((millis()-serialTimer) > 3000) {
 
-    serialStr = myPort.readString();
+    dataStr = dReader.readLine();
+    //System.out.println(dataStr);
+    // split line
+    String[] serialArray = splitTokens(dataStr, ",");
+    // assign values to temperature,light,humidity
+    if (serialArray.length == 5) {
 
-    if (serialStr!=null) {
-      //println(serialStr);
-      String[] serialArray = splitTokens(serialStr, ",");
-
-      for (int i=0; i<serialArray.length; i++) {
-        String list[] = splitTokens(serialArray[i], "=");
-        try {
-          if (list[0].equals("sonar1")) {
-            sonar_1 = Integer.parseInt(list[1]);
-          }
-          else if (list[0].equals("sonar2")) {
-            sonar_2 = Integer.parseInt(list[1]);
-          }
-          else if (list[0].equals("temp")) {
-            temperature = Integer.parseInt(list[1]);
-          }
-          else if (list[0].equals("humid")) {
-            humidity = Integer.parseInt(list[1]);
-          }
-          else if (list[0].equals("light")) {
-            light = Integer.parseInt(list[1]);
-          }
-        }
-        catch(Exception e) {
-        }
+      float t0 = Float.parseFloat(serialArray[2]);
+      float h0 = Float.parseFloat(serialArray[3]);
+      float l0 = Float.parseFloat(serialArray[4]);
+  
+      if((t0 < 45.0) && (t0 > -10.0)){
+        temperature = t0;
       }
+      
+      if((h0 > 50.0) && (h0 < 110.0)){
+        humidity = h0;
+      }
+      
+      if((l0 > -1.0) && (l0 < 11.0)) {
+        light = l0;
+      }
+      
+      println("got (t,l,h): "+temperature+" "+light+" "+humidity);
     }
+    serialTimer = millis();
   }
+
 
   // if temp <<>> oldtemp
   // update TEMPVAR:(0,1]
@@ -202,8 +216,8 @@ void draw() {
     if ((temperature0 == -10)||(abs(temperature-temperature0) > 5)) {
       temperature0 = temperature;
       // correction
-      float tt = (float)temperature + 8.0;
-      TEMPVAR = map(tt, 15, 40, 0, 1.0);
+      float tt = (float)temperature + 0.0;
+      TEMPVAR = map(tt, 10, 45, 0.0, 1.0);
     }
   }
 
@@ -211,20 +225,9 @@ void draw() {
   // if humidity <<>> oldhumidity
   // update HAIRLENGTH: [5, 20]
   if (humidity != -10) {
-    if ((humidity0 == -10)||(abs(humidity-humidity0) > 500)) {
+    if ((humidity0 == -10)||(abs(humidity-humidity0) > 10)) {
 
-      if ((humidity < 20)&&(humidity0<20)) {
-        HAIRLENGTH = 5;
-      }
-      else if ((humidity > 1020)&&(humidity0>1020)) {
-        HAIRLENGTH = 20;
-      }
-      else if ((humidity0 < 1020)&&(humidity0>20)) {
-        HAIRLENGTH = 15;
-      }
-
-      //HAIRLENGTH = (int)map((float)humidity, 15, 80, 5, 20);
-
+      HAIRLENGTH = (int)map(humidity, 50, 110, 5, 20);
 
       humidity0 = humidity;
       for (int i=0; i<Hairs.size(); i++) {
@@ -238,9 +241,9 @@ void draw() {
   // if light <<>> oldlight
   // update NUMHAIR: [250, 900]
   if (light != -10) {
-    if ((light0 == -10)||(abs(light-light0) > 20)) {
+    if ((light0 == -10)||(abs(light-light0) > 0.2)) {
       light0 = light;
-      NUMHAIR = (int)map((float)light, 250, 920, 200, 900);
+      NUMHAIR = (int)map(light, -1, 11, 200, 900);
 
       while (NUMHAIR > Hairs.size ()) {
         int tx = (int)random(0, width);
@@ -249,7 +252,7 @@ void draw() {
         Hairs.add(new Hair(HAIRLENGTH, PVX, PVY, tx, ty, img));
       }
 
-      while (Hairs.size () > NUMHAIR) {
+      while ( (Hairs.size () > NUMHAIR)&&(Hairs.size() > 0)) {
         Hair h = (Hair) Hairs.get(Hairs.size()-1);
         h.clear();
         Hairs.remove(Hairs.size()-1);
@@ -280,7 +283,7 @@ void draw() {
 
     for (int i=ii; i<(ii+numh); i++) {
       Hair h = (Hair) Hairs.get(i);
-      println("replacing "+ i);
+      //println("replacing "+ i);
 
       int rx = (int)h.tx;
       int ry = (int)h.ty;
@@ -294,7 +297,7 @@ void draw() {
   for (int i=0; i<Hairs.size();i++) {
     Hair h = (Hair) Hairs.get(i);
     if (h.isDead == 1) {
-      println("reseeding "+ i);
+      //println("reseeding "+ i);
 
       int rx = (int)h.tx;
       int ry = (int)h.ty;
@@ -325,15 +328,17 @@ void draw() {
 void keyReleased() {
   // testing temp
   if (((key == 't')||(key == 'b'))&&(temperature <=0)) {
-    temperature = 5;
+    temperature = 20;
     println("up to: "+temperature);
   }
-  else if ((key == 't')&&(temperature < 32)) {
-    temperature += 3;
+  else if ((key == 't')) {
+    temperature += 5;
+    temperature = (temperature>40)?40:temperature;
     println("up to: "+temperature);
   }
-  else if ((key == 'b')&&(temperature >= 5)) {
+  else if ((key == 'b')) {
     temperature -= 3;
+    temperature = (temperature<15)?15:temperature;
     println("down to: "+temperature);
   }
   else if (key == 'g') {
@@ -342,15 +347,17 @@ void keyReleased() {
 
   /// testing light
   if (((key == 'u')||(key == 'm'))&&(light <=0)) {
-    light = 250;
+    light = 5;
     println("up to: "+light);
   }
-  else if ((key == 'u')&&(light < 915)) {
-    light += 5;
+  else if ((key == 'u')) {
+    light += 1;
+    light = (light>10)?10:light;
     println("up to: "+light);
   }
-  else if ((key == 'm')&&(light >= 255)) {
-    light -= 5;
+  else if ((key == 'm')) {
+    light -= 1;
+    light = (light<1)?1:light;
     println("down to: "+light);
   }
   else if (key == 'j') {
@@ -359,17 +366,17 @@ void keyReleased() {
 
   /// testing humidity
   if (((key == 'e')||(key == 'c'))&&(humidity <=0)) {
-    humidity = 500;
+    humidity = 70;
     println("up to: "+humidity);
   }
   else if ((key == 'e')) {
-    humidity += 200;
-    humidity = (humidity<1200)?humidity:1200;
+    humidity += 10;
+    humidity = (humidity>110)?100:humidity;
     println("up to: "+humidity);
   }
   else if ((key == 'c')) {
-    humidity -= 200;
-    humidity = (humidity>0)?humidity:0;
+    humidity -= 10;
+    humidity = (humidity<50)?50:humidity;
     println("down to: "+humidity);
   }
   else if (key == 'd') {
