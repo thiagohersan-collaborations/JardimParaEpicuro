@@ -66,7 +66,6 @@ class Hair {
   void setLength(int len) {
 
     if (len != hlen) {
-
       while (len > particles.size ()) {
         particles.add(new Particle(random(0, width), random(0, height), random(1, maxMass), random(1, maxGravity), PVX, PVY, img));
       }

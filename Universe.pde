@@ -1,12 +1,12 @@
 class Universe {
-  ArrayList holes;
+  ArrayList balls;
   float maxGravity = 0.5;
   float maxRadius = 20;
   float distFactor = 1.0;
   float centerX, centerY;
 
   Universe(int ulen, float df, float cx, float cy) {
-    holes = new ArrayList();
+    balls = new ArrayList();
     distFactor = df;
     centerX = cx;
     centerY = cy;
@@ -22,24 +22,24 @@ class Universe {
       float massRadius = random(7, maxRadius);
 
 
-      holes.add(new Hole(random(tx-df*(width/2), tx+df*(width/2)), random(ty-df*(height/2), ty-df*(height/2)), tx, ty, 
+      balls.add(new Ball(random(tx-df*(width/2), tx+df*(width/2)), random(ty-df*(height/2), ty-df*(height/2)), tx, ty, 
       massRadius, random(0, maxGravity), massRadius));
     }
   }
 
   void display() {
-    for (int i=0; i<holes.size(); i++) {
-      Hole h = (Hole) holes.get(i);
-      h.update();
-      h.display();
+    for (int i=0; i<balls.size(); i++) {
+      Ball b = (Ball) balls.get(i);
+      b.update();
+      b.display();
     }
   }
 
   void display(float tv) {
-    for (int i=0; i<holes.size(); i++) {
-      Hole h = (Hole) holes.get(i);
-      h.update(tv);
-      h.display();
+    for (int i=0; i<balls.size(); i++) {
+      Ball b = (Ball) balls.get(i);
+      b.update(tv);
+      b.display();
     }
   }
 }

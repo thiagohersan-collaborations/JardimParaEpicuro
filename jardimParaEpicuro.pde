@@ -7,13 +7,15 @@ import processing.serial.*;
  */
 
 
-int HAIRLENGTH = 18;
-int NUMHAIR = 600;
+int HAIRLENGTH = 9;//18;
+int NUMHAIR = 60;//600;
 int NUMBALLS = 10;
 float TEMPVAR = 0.2;
 
 ArrayList Hairs;
 ArrayList U;
+
+ArrayList<Flock> F;
 
 float[][] PVX;
 float[][] PVY;
@@ -60,16 +62,17 @@ void setup() {
   // ****
   // **** mudar aqui se for necessario usar a entrada serial.
   // ****
-  dReader = new DataReader("http://ecolab.plataformacero.cc/datos/datos.php?sensor_id=6");
+  //dReader = new DataReader("http://ecolab.plataformacero.cc/datos/datos.php?sensor_id=6");
   //dReader = new DataReader(myPort);
 
   Hairs = new ArrayList();
   U = new ArrayList();
+  F = new ArrayList<Flock>();
 
   //img = loadImage("xadrez.bmp");
   //img = loadImage("desenho1.bmp");
   img = loadImage("desenho6.bmp");
-  img.resize(width,height);
+  img.resize(width, height);
 
   img.loadPixels();
 
@@ -163,23 +166,36 @@ void setup() {
     Hairs.add(new Hair(HAIRLENGTH, PVX, PVY, tx, ty, img));
   }
 
-  /// add balls
+  /// add balls 
+  /*
   U.add(new Universe(NUMBALLS, TEMPVAR, width/20, height/20));
-  U.add(new Universe(NUMBALLS, TEMPVAR, width/2, height/10));
-  U.add(new Universe(NUMBALLS, TEMPVAR, width*18/20, height/18));
-  U.add(new Universe(NUMBALLS, TEMPVAR, width*17/20, height*3/10));
-  U.add(new Universe(NUMBALLS, TEMPVAR, width*2/20, height*6/10));
-  U.add(new Universe(NUMBALLS, TEMPVAR, width*11/20, height*7/10));
+   U.add(new Universe(NUMBALLS, TEMPVAR, width/2, height/10));
+   U.add(new Universe(NUMBALLS, TEMPVAR, width*18/20, height/18));
+   U.add(new Universe(NUMBALLS, TEMPVAR, width*17/20, height*3/10));
+   U.add(new Universe(NUMBALLS, TEMPVAR, width*2/20, height*6/10));
+   U.add(new Universe(NUMBALLS, TEMPVAR, width*11/20, height*7/10));
+   */
+
+  F.add(new Flock(new PVector(width*6.0/16,     height*9.0/16+20),  color(#b80028)));
+  F.add(new Flock(new PVector(width*6.0/16+10,  height*9.0/16),     color(#ff5b00)));
+  F.add(new Flock(new PVector(width*6.0/16+20,  height*10.0/16),  color(#ff5b00)));
+
+  F.add(new Flock(new PVector(width*13.0/16-20, height*12.0/16), color(#b80028)));
+  F.add(new Flock(new PVector(width*13.0/16+20, height*13.0/16), color(#ff5b00)));
 }
 
 void draw() {
   background(255, 255, 255);
 
+  //ellipseMode(CENTER);
+  //fill(255,0,0);
+  //ellipse(width*13.0/16+20, height*13.0/16, 10,10);
+
   // read from serial only once per minute...
   // this only detects once a minute has passed, 
   // clears the buffer, and sets up readFromSerial
   // in order to catch the next serial bundle
-  if ((millis()-serialTimer) > 3000) {
+  if (((millis()-serialTimer) > 3000) && (dReader != null)) {
 
     dataStr = dReader.readLine();
     //System.out.println(dataStr);
@@ -191,19 +207,20 @@ void draw() {
       float t0 = Float.parseFloat(serialArray[2]);
       float h0 = Float.parseFloat(serialArray[3]);
       float l0 = Float.parseFloat(serialArray[4]);
-  
-      if((t0 < 45.0) && (t0 > -10.0)){
+
+      // boundary checking  
+      if ((t0 < 45.0) && (t0 > -10.0)) {
         temperature = t0;
       }
-      
-      if((h0 > 50.0) && (h0 < 110.0)){
+
+      if ((h0 > 50.0) && (h0 < 110.0)) {
         humidity = h0;
       }
-      
-      if((l0 > -1.0) && (l0 < 11.0)) {
+
+      if ((l0 > -1.0) && (l0 < 11.0)) {
         light = l0;
       }
-      
+
       println("got (t,l,h): "+temperature+" "+light+" "+humidity);
     }
     serialTimer = millis();
@@ -259,6 +276,13 @@ void draw() {
       }
     }
   }
+
+
+  for (int i=0; i<F.size(); i++) {
+    Flock f = F.get(i);
+    f.updateFlock();
+  }
+
 
   // every 20 seconds after 2 minutes... 
   // replace some hairs besed on humidity level.
