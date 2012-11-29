@@ -7,14 +7,12 @@ import processing.serial.*;
  */
 
 
-int HAIRLENGTH = 9;//18;
-int NUMHAIR = 60;//600;
+int HAIRLENGTH = 18;
+int NUMHAIR = 600;
 int NUMBALLS = 10;
-float TEMPVAR = 0.2;
+float TEMPVAR = 0.5;
 
 ArrayList Hairs;
-ArrayList U;
-
 ArrayList<Flock> F;
 
 float[][] PVX;
@@ -62,11 +60,10 @@ void setup() {
   // ****
   // **** mudar aqui se for necessario usar a entrada serial.
   // ****
-  //dReader = new DataReader("http://ecolab.plataformacero.cc/datos/datos.php?sensor_id=6");
+  dReader = new DataReader("http://ecolab.plataformacero.cc/datos/datos.php?sensor_id=6");
   //dReader = new DataReader(myPort);
 
   Hairs = new ArrayList();
-  U = new ArrayList();
   F = new ArrayList<Flock>();
 
   //img = loadImage("xadrez.bmp");
@@ -167,35 +164,21 @@ void setup() {
   }
 
   /// add balls 
-  /*
-  U.add(new Universe(NUMBALLS, TEMPVAR, width/20, height/20));
-   U.add(new Universe(NUMBALLS, TEMPVAR, width/2, height/10));
-   U.add(new Universe(NUMBALLS, TEMPVAR, width*18/20, height/18));
-   U.add(new Universe(NUMBALLS, TEMPVAR, width*17/20, height*3/10));
-   U.add(new Universe(NUMBALLS, TEMPVAR, width*2/20, height*6/10));
-   U.add(new Universe(NUMBALLS, TEMPVAR, width*11/20, height*7/10));
-   */
-
-  F.add(new Flock(new PVector(width*6.0/16,     height*9.0/16+20),  color(#b80028)));
-  F.add(new Flock(new PVector(width*6.0/16+10,  height*9.0/16),     color(#ff5b00)));
-  F.add(new Flock(new PVector(width*6.0/16+20,  height*10.0/16),  color(#ff5b00)));
-
-  F.add(new Flock(new PVector(width*13.0/16-20, height*12.0/16), color(#b80028)));
-  F.add(new Flock(new PVector(width*13.0/16+20, height*13.0/16), color(#ff5b00)));
+  F.add(new Flock(new PVector(width*1.0/5.0, height*1.0/5.0), color(#000000), TEMPVAR));
+  F.add(new Flock(new PVector(width*4.0/5.0, height*1.0/5.0), color(#000000), TEMPVAR));
+  F.add(new Flock(new PVector(width*2.5/5.0, height*2.5/5.0), color(#000000), TEMPVAR));
+  F.add(new Flock(new PVector(width*1.0/5.0, height*4.0/5.0), color(#000000), TEMPVAR));
+  F.add(new Flock(new PVector(width*4.0/5.0, height*4.0/5.0), color(#000000), TEMPVAR));
 }
 
 void draw() {
   background(255, 255, 255);
 
-  //ellipseMode(CENTER);
-  //fill(255,0,0);
-  //ellipse(width*13.0/16+20, height*13.0/16, 10,10);
-
-  // read from serial only once per minute...
+  // read from serial only twice per minute...
   // this only detects once a minute has passed, 
   // clears the buffer, and sets up readFromSerial
   // in order to catch the next serial bundle
-  if (((millis()-serialTimer) > 3000) && (dReader != null)) {
+  if (((millis()-serialTimer) > 30000) && (dReader != null)) {
 
     dataStr = dReader.readLine();
     //System.out.println(dataStr);
@@ -221,7 +204,7 @@ void draw() {
         light = l0;
       }
 
-      println("got (t,l,h): "+temperature+" "+light+" "+humidity);
+      //println("got (t,l,h): "+temperature+" "+light+" "+humidity);
     }
     serialTimer = millis();
   }
@@ -234,7 +217,10 @@ void draw() {
       temperature0 = temperature;
       // correction
       float tt = (float)temperature + 0.0;
-      TEMPVAR = map(tt, 10, 45, 0.0, 1.0);
+      TEMPVAR = map(tt, 15, 35, 0.0, 1.0);
+
+      if (TEMPVAR < 0.0) TEMPVAR = 0.0;
+      if (TEMPVAR > 1.0) TEMPVAR = 1.0;
     }
   }
 
@@ -244,7 +230,10 @@ void draw() {
   if (humidity != -10) {
     if ((humidity0 == -10)||(abs(humidity-humidity0) > 10)) {
 
-      HAIRLENGTH = (int)map(humidity, 50, 110, 5, 20);
+      HAIRLENGTH = (int)map(humidity, 60, 100, 5, 20);
+
+      if (HAIRLENGTH < 5) HAIRLENGTH = 5;
+      if (HAIRLENGTH >20) HAIRLENGTH = 20;
 
       humidity0 = humidity;
       for (int i=0; i<Hairs.size(); i++) {
@@ -260,7 +249,10 @@ void draw() {
   if (light != -10) {
     if ((light0 == -10)||(abs(light-light0) > 0.2)) {
       light0 = light;
-      NUMHAIR = (int)map(light, -1, 11, 200, 900);
+      NUMHAIR = (int)map(light, 0, 2, 300, 900);
+
+      if (NUMHAIR < 200 ) NUMHAIR = 200;
+      if (NUMHAIR > 900) NUMHAIR = 900;
 
       while (NUMHAIR > Hairs.size ()) {
         int tx = (int)random(0, width);
@@ -275,12 +267,6 @@ void draw() {
         Hairs.remove(Hairs.size()-1);
       }
     }
-  }
-
-
-  for (int i=0; i<F.size(); i++) {
-    Flock f = F.get(i);
-    f.updateFlock();
   }
 
 
@@ -341,10 +327,12 @@ void draw() {
     }
   }
 
-  for (int i=0; i<U.size(); i++) {
-    Universe u = (Universe) U.get(i);
-    u.display(TEMPVAR);
+  // display flocks
+  for (int i=0; i<F.size(); i++) {
+    Flock f = F.get(i);
+    f.updateFlock(TEMPVAR);
   }
+  //
 }
 
 
@@ -404,7 +392,7 @@ void keyReleased() {
     println("down to: "+humidity);
   }
   else if (key == 'd') {
-    println("l, l0, HAIRLENGTH: "+humidity+" "+humidity0+" "+HAIRLENGTH);
+    println("h, h0, HAIRLENGTH: "+humidity+" "+humidity0+" "+HAIRLENGTH);
   }
 }
 

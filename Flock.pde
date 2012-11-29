@@ -3,6 +3,7 @@ class Flock {
 
   private ArrayList<Boid> boids;
   private color flockColor;
+  private float scaleF;
 
   // original radius and speed
   private float originalR;
@@ -27,24 +28,26 @@ class Flock {
   }
 
   // init the list of smoke boids
-  public Flock(PVector xy, color fc) {
+  public Flock(PVector xy, color fc, float sf) {
     isSmoke = true;
     boids = new ArrayList<Boid>();
     flockColor = fc;
+    scaleF = sf;
 
     // initialize flock with boids
     for (int i=0; i<FLOCK_SIZE; i++) {
-      boids.add(new Boid(xy, fc));
+      boids.add(new Boid(xy, fc, sf));
     }
   }
 
   // update state and location, and display each boid
-  public void updateFlock() {
+  public void updateFlock(float sf) {
+    scaleF = sf;
     if (isSmoke == true) {
       Boid p = null;
       for(int i=1; i<boids.size(); i++) {
         Boid b = boids.get(i);
-        b.displayBoid(p);
+        b.displayBoid(p, sf);
         p = boids.get(i);
       }
     }
@@ -81,7 +84,7 @@ class Flock {
   // add boid to flock
   public void addBoid() {
     if (isSmoke == true) {
-      boids.add(new Boid(new PVector(0,0), flockColor));
+      boids.add(new Boid(new PVector(0,0), flockColor, scaleF));
     }
     else {
       boids.add(new Boid(new PVector(random(0.375, 0.625)*width, random(0.375, 0.625)*height), originalR, originalS, flockColor));
